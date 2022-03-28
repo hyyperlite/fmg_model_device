@@ -37,9 +37,9 @@ import yaml
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--fgt_yaml', default='devices.yml')
-parser.add_argument('--fmg_ip', default='10.99.227.120')
+parser.add_argument('--fmg_ip', default='1.1.1.1')
 parser.add_argument('--fmg_login', default='admin')
-parser.add_argument('--fmg_pass', default='fortinet')
+parser.add_argument('--fmg_pass', default='password')
 parser.add_argument('--debug', type=bool,  default=False)
 parser.add_argument('--verbose', type=bool, default=False)
 
@@ -59,7 +59,15 @@ args = parser.parse_args()
 api = FortiManagerJSON()
 api.verbose('on') if args.verbose else api.verbose('off')
 api.debug('on') if args.debug else api.debug('off')
-api.login(args.fmg_ip, args.fmg_login, args.fmg_pass)
+
+# Try to open HTTP(s)/JSON API connection to FMG
+try:
+    api.login(args.fmg_ip, args.fmg_login, args.fmg_pass)
+except:
+    print(f'Unable to either reach or login to FMG at {args.fmg_ip}, aborting.')
+    exit()
+else:
+    print(f'Successfully connected to FMG {args.fmg_ip} API\n')
 
 # Open YAML file containing model_device information
 with open(args.fgt_yaml) as file:

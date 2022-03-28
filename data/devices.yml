@@ -7,8 +7,8 @@ fg-branch3:
   descr: "Model Device Test"
   serial_num: FGVM02TM21015061
   meta_vars:
-      site_id: "3"
-      hostname: fg-branch3
+    site_id: "3"
+    hostname: fg-branch3
   name: fg-branch3
   platform: FortiGate-VM64-KVM
   policy_package: fwpol_branches
