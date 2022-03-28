@@ -1,0 +1,39 @@
+# Branch3
+fg-branch3:
+  adom: root
+  vdom: root
+  user: admin
+  password: fortinet
+  descr: "Model Device Test"
+  serial_num: FGVM02TM21015061
+  meta_vars:
+      site_id: "3"
+      hostname: fg-branch3
+  name: fg-branch3
+  platform: FortiGate-VM64-KVM
+  policy_package: fwpol_branches
+  preferred_img: 7.0.5-b304
+  group: branches
+  sdwan_template: sdwan_branches
+  pre_cli_template: base_setup
+  template_group: cli_group_branches_type1
+### Branch4
+fg-branch4:
+  adom: root
+  vdom: root
+  user: admin
+  password: fortinet
+  descr: "Model Device Test2"
+  serial_num: FGVM02TM21015062
+  meta_vars:
+    site_id: "4"
+    hostname: fg-branch4
+  name: fg-branch4
+  platform: FortiGate-VM64-KVM
+  policy_package: fwpol_branches
+  preferred_img: 7.0.5-b304
+  group: branches
+  sdwan_template: sdwan_branches
+  pre_cli_template: base_setup
+  template_group: cli_group_branches_type1
+
