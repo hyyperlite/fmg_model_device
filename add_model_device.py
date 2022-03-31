@@ -31,7 +31,7 @@ Notes:
 
 # Adding model device and configuring it for first time deployment
 from ftntlib import FortiManagerJSON
-from modeldevice import ModelDevice
+from modeldevice import *
 import argparse
 import yaml
 
@@ -42,6 +42,7 @@ parser.add_argument('--fmg_login', default='admin')
 parser.add_argument('--fmg_pass', default='password')
 parser.add_argument('--debug', type=bool,  default=False)
 parser.add_argument('--verbose', type=bool, default=False)
+parser.add_argument('--ignore_dev_exists', type=bool, default=False)
 
 # Enable/Disable specific components
 parser.add_argument('--add_model_device', type=bool, default=True)
@@ -50,6 +51,7 @@ parser.add_argument('--install_device_db_pre', type=bool, default=True)
 parser.add_argument('--add_to_dev_group', type=bool, default=True)
 parser.add_argument('--add_to_sdwan_templ', type=bool, default=True)
 parser.add_argument('--add_to_cli_templ_group', type=bool, default=True)
+parser.add_argument('--add_to_templ_group', type=bool, default=True)
 parser.add_argument('--install_device_db_post', type=bool, default=True)
 parser.add_argument('--add_to_pol_pkg', type=bool, default=True)
 parser.add_argument('--install_pol_pkg_to_db', type=bool, default=True)
@@ -72,7 +74,8 @@ else:
 # Open YAML file containing model_device information
 with open(args.fgt_yaml) as file:
     # load from yaml file to dict
-    devices = yaml.load(file)
+    # devices = yaml.load(file)
+    devices = yaml.safe_load(file)
     for fg in devices:
         print(f'### Processing {fg}')
         # Create class instance of ModelDevice for this fg device to be added
@@ -82,8 +85,23 @@ with open(args.fgt_yaml) as file:
         # Add model device to FMG
         if args.add_model_device:
             print(f'  Adding model device {fg} to fmg:', end=' ')
-            result = md.add()
-            print('Success') if result else print('Failed')
+            try:
+                result = md.add()
+            # Catch exception from ModelDevice for if the sn or name already exists in FMG DVM and then handle
+            except MdFmgDvmError as e:
+                if args.ignore_dev_exists:
+                    print('\n   Device name or SN already Exists In DVM, continuing with subsequent  configurations')
+                else:
+                    print('\n   Device name or SN already Exists In DVM, abort further configuration of this device')
+                    continue
+            # Catch exception from ModelDevice for if not enough variables provided to add device
+            except MdDataError as e:
+                print(f'\n    {e}, abort further configuration of this device')
+                continue
+            # No exceptions, so continue as normal
+            else:
+                print('Success') if result else print('Failed')
+
 
         # Add model device (already in DVM) to pre-run cli template
         if args.add_to_pre_cli:
@@ -112,8 +130,14 @@ with open(args.fgt_yaml) as file:
 
         # Assign model device to post-run CLI template group
         if args.add_to_cli_templ_group:
-            print(f'  Add {fg} to CLI Template Group \"{devices[fg]["template_group"]}\" :', end=' ')
+            print(f'  Add {fg} to CLI Template Group \"{devices[fg]["cli_template_group"]}\" :', end=' ')
             result = md.add_to_cli_templ_group()
+            print('Success') if result else print('Failed')
+
+        # Assign model device to general template groups (not cli)
+        if args.add_to_templ_group:
+            print(f'  Add {fg} to Template Group \"{devices[fg]["template_group"]}\" :', end=' ')
+            result = md.add_to_templ_group()
             print('Success') if result else print('Failed')
 
         # Install Device Settings again, this time to add post run templates to DB

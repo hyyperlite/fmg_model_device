@@ -16,7 +16,8 @@ fg-branch3:
   group: branches
   sdwan_template: sdwan_branches
   pre_cli_template: base_setup
-  template_group: cli_group_branches_type1
+  cli_template_group: cli_group_branches_type1
+  template_group: template_grp1
 ### Branch4
 fg-branch4:
   adom: root
@@ -35,5 +36,6 @@ fg-branch4:
   group: branches
   sdwan_template: sdwan_branches
   pre_cli_template: base_setup
-  template_group: cli_group_branches_type1
+  cli_template_group: cli_group_branches_type1
+  template_group: template_grp1
 
