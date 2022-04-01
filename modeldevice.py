@@ -25,7 +25,7 @@ class ModelDevice():
         self.group = device['group'] if 'group' in device else None
         self.sdwan_template = device['sdwan_template'] if 'sdwan_template' in device else None
         self.pre_cli_template = device['pre_cli_template'] if 'pre_cli_template' in device else None
-        self.cli_template_group = device['cli_template_group'] if 'template_group' in device else None
+        self.cli_template_group = device['cli_template_group'] if 'cli_template_group' in device else None
         self.template_group = device['template_group'] if 'template_group' in device else None
 
         # If fmg_api param was passed in, then try to set it (see also api property and setter)

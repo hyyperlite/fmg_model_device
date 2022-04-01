@@ -11,10 +11,11 @@ Optionally can do all of the following (and does by default)
 4.  Add model device to device group
 5.  Add model device to SDWAN template
 6.  Add model device to CLI Template Group
-7.  "Quick install" to Device Database (to execute post-run templates)
-8.  Add device as install target on target FW pol pkg (not required due to groups, but preferred when on GUI)
-9.  Install policy package and device settings to FMG DB
-10. Done  (now wait to device with matching details to attempt registration with FMG)
+7.  Add model device to "Template Group"  (not CLI template group)
+8.  "Quick install" to Device Database (to execute post-run templates)
+9.  Add device as install target on target FW pol pkg (not required due to groups, but preferred when on GUI)
+10.  Install policy package and device settings to FMG DB
+11. Done  (now wait to device with matching details to attempt registration with FMG)
 
 Notes:
     -  Model device is finicky, this is why I install device DB (locally) twice and then install devdb
@@ -24,9 +25,9 @@ Notes:
        just "FortiGate-VM64".  If you don't have this right, it will fail when upgrading to the
        "fg_preferred_img"
 
-    - If things aren't installing correct once the real device is registered; ensure that your login
+    - If things aren't installing correctly once the real device is registered; ensure that your login
       password is correct.   For brand new (Fortideploy, etc) devices the password should be "".  For
-      devices you are testing with but not completely factory resetting, this will be the set password.
+      devices you are testing with but not completely factory resetting, this will be the current device password.
 """
 
 # Adding model device and configuring it for first time deployment
@@ -50,7 +51,7 @@ parser.add_argument('--add_to_pre_cli', type=bool, default=True)
 parser.add_argument('--install_device_db_pre', type=bool, default=True)
 parser.add_argument('--add_to_dev_group', type=bool, default=True)
 parser.add_argument('--add_to_sdwan_templ', type=bool, default=True)
-parser.add_argument('--add_to_cli_templ_group', type=bool, default=True)
+parser.add_argument('--add_to_cli_templ_group', type=bool, default=False)
 parser.add_argument('--add_to_templ_group', type=bool, default=True)
 parser.add_argument('--install_device_db_post', type=bool, default=True)
 parser.add_argument('--add_to_pol_pkg', type=bool, default=True)
@@ -101,7 +102,6 @@ with open(args.fgt_yaml) as file:
             # No exceptions, so continue as normal
             else:
                 print('Success') if result else print('Failed')
-
 
         # Add model device (already in DVM) to pre-run cli template
         if args.add_to_pre_cli:
