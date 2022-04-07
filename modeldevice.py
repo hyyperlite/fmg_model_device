@@ -108,8 +108,39 @@ class ModelDevice():
         taskid = response[1]['taskid']
         return self.__api_task_result(taskid)
 
+    # Add the current model device object to FMG via passed in ftntlib 'api'
+    def delete(self):
 
-    # Function to assign model device to pre-run CLI template
+        # Check parameters required for 'add'
+        if self.adom is None: raise MdDataError('adom', 'delete')
+        if self.vdom is None: raise MdDataError('vdom', 'delete')
+        if self.name is None: raise MdDataError('name', 'delete')
+
+        #If both device name and serial exist in dvm check to see if they are for the same device, if so raise except
+        if self.check_dev_name_in_fmg():
+            # If serial number is set, check to see if name and serial number associated in dvmdb
+            # If serial number is not set do not do this check and continue
+            if self.serial_num is not None:
+                if self.check_exist_dev_name_and_sn_same():
+                    url = 'dvm/cmd/del/device/'
+                    data = {
+                        'adom': self.adom,
+                        'flags': ['create_task',
+                                  'nonblocking'],
+                        'device': self.name
+                    }
+                    response = self.api.execute(url, data)
+                    # taskid = response[1]['taskid']
+                    # return self.__api_task_result(taskid)
+
+                    # For some reason delete will not create a task so using api OK check
+                    return self.__api_result(response)
+                else:
+                    raise MdFmgDvmError('Supplied device name and sn are not associated in fmg dvmdb')
+        else:
+            pass
+
+# Function to assign model device to pre-run CLI template
     def add_to_pre_cli_script(self):
         # Check for required parameters
         if self.adom is None: raise MdDataError('adom', 'add_to_pre_cli_script')

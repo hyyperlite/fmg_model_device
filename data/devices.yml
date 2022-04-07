@@ -6,6 +6,7 @@ fg-branch3:
   password: fortinet
   descr: "Model Device Test"
   serial_num: FGVM02TM21015061
+#  serial_num: FGVM02TM21015072
   meta_vars:
     site_id: "3"
     hostname: fg-branch3
@@ -16,7 +17,8 @@ fg-branch3:
   group: branches
   sdwan_template: sdwan_branches
   pre_cli_template: base_setup
-  template_group: template_grp1
+  cli_template_group: cli_group_branches_type1
+  # template_group: template_grp1
 ### Branch4
 fg-branch4:
   adom: root
@@ -35,5 +37,6 @@ fg-branch4:
   group: branches
   sdwan_template: sdwan_branches
   pre_cli_template: base_setup
-  template_group: template_grp1
+  cli_template_group: cli_group_branches_type1
+  # template_group: template_grp1
 
