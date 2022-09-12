@@ -35,27 +35,35 @@ from ftntlib import FortiManagerJSON
 from modeldevice import *
 import argparse
 import yaml
+import sys
+from pprint import pprint
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--fgt_yaml', default='devices.yml')
+parser.add_argument('--fgt_yaml', default='devices2.yml')
 parser.add_argument('--fmg_ip', default='1.1.1.1')
 parser.add_argument('--fmg_login', default='admin')
 parser.add_argument('--fmg_pass', default='password')
+parser.add_argument('--fmg_ver', default='7.0') # todo
 parser.add_argument('--debug', type=bool,  default=False)
-parser.add_argument('--verbose', type=bool, default=False)
+parser.add_argument('--verbose', type=bool, default=True)
 parser.add_argument('--ignore_dev_exists', type=bool, default=False)
 
+# Some testing/checking options
+parser.add_argument('--get_device_info', type=bool, default=False)
+parser.add_argument('--get_device_group_info', type=bool, default=False)
+
 # Enable/Disable specific components
+# parser.add_argument('--use_blueprint', type=bool, default=False)  # only fmg 7.2+, to do todo
 parser.add_argument('--add_model_device', type=bool, default=True)
-parser.add_argument('--add_to_pre_cli', type=bool, default=True)
-parser.add_argument('--install_device_db_pre', type=bool, default=True)
-parser.add_argument('--add_to_dev_group', type=bool, default=True)
-parser.add_argument('--add_to_sdwan_templ', type=bool, default=True)
-parser.add_argument('--add_to_cli_templ_group', type=bool, default=True)
+parser.add_argument('--add_to_pre_cli', type=bool, default=False)
+parser.add_argument('--install_device_db_pre', type=bool, default=False)
+parser.add_argument('--add_to_dev_group', type=bool, default=False)
+parser.add_argument('--add_to_sdwan_templ', type=bool, default=False)
+parser.add_argument('--add_to_cli_templ_group', type=bool, default=False)
 parser.add_argument('--add_to_templ_group', type=bool, default=False)
-parser.add_argument('--install_device_db_post', type=bool, default=True)
-parser.add_argument('--add_to_pol_pkg', type=bool, default=True)
-parser.add_argument('--install_pol_pkg_to_db', type=bool, default=True)
+parser.add_argument('--install_device_db_post', type=bool, default=False)
+parser.add_argument('--add_to_pol_pkg', type=bool, default=False)
+parser.add_argument('--install_pol_pkg_to_db', type=bool, default=False)
 args = parser.parse_args()
 
 # Instantiate and Login to Fortimanager
@@ -77,11 +85,23 @@ with open(args.fgt_yaml) as file:
     # load from yaml file to dict
     # devices = yaml.load(file)
     devices = yaml.safe_load(file)
+
     for fg in devices:
         print(f'### Processing {fg}')
         # Create class instance of ModelDevice for this fg device to be added
         # We provide the device info as 'dict' and the logged in fntlib api
+        devices[fg]['name'] = fg   # assign name of device as var in dict
         md = ModelDevice(devices[fg], api)
+
+        if args.get_device_info:
+            print(f'  Get/print info for device {fg} if exists')
+            pprint(md.get_device_info())
+            sys.exit()
+
+        if args.get_device_group_info:
+            print(f'   Get/print group info')
+            pprint(md.get_dev_group_info())
+            sys.exit()
 
         # Add model device to FMG
         if args.add_model_device:
@@ -101,7 +121,7 @@ with open(args.fgt_yaml) as file:
                 continue
             # No exceptions, so continue as normal
             else:
-                print('Success') if result else print('Failed')
+                print('Success') if result == True else pprint(f'Failed: {result}')
 
         # Add model device (already in DVM) to pre-run cli template
         if args.add_to_pre_cli:

@@ -61,7 +61,7 @@ class ModelDevice():
     def __api_task_result(self, a_taskid):
         task = self.api.taskwait(a_taskid)  # ftntlib class function
         if task[1]['num_err'] > 0:
-            return False
+            return task[1]['line']
         else:
             return True
 
@@ -74,7 +74,9 @@ class ModelDevice():
         if self.name is None: raise MdDataError('name', 'add')
         if self.serial_num is None: raise MdDataError('serial_num', 'add')
         if self.platform is None: raise MdDataError('platform', 'add')
-        if self.preferred_img is None: raise MdDataError('preferred_img', 'add')
+        # if self.preferred_img is None: raise MdDataError('preferred_img', 'add')
+        if self.preferred_img is None:
+            self.preferred_img = ''
 
         # If both device name and serial exist in dvm check to see if they are for the same device, if so raise except
         if self.check_dev_name_in_fmg():
@@ -89,20 +91,44 @@ class ModelDevice():
                 "adm_pass": self.password,
                 "adm_usr": self.user,
                 "desc": self.descr,
-                "dev_status": 1,
+                # "dev_status": 1,
                 "device_action": "add_model",
-                'flags': 69468160,  # Without this auto-install stuff doesn't happen when match device registers
+                #"flags": 69468160,  # Without this auto-install stuff doesn't happen when match device registers  (7.0 vs 7.2?)
+                "flags": 67371040,  # Without this auto-install stuff doesn't happen when match device registers
+                "hostname": self.name,
                 "meta fields": self.meta_vars,
                 "mgmt_mode": 3,
-                "model_device": 1,
+                # "model_device": 1,
                 "mr": 0,
                 "name": self.name,
                 "sn": self.serial_num,
                 "os_type": 0,
                 "os_ver": 7,
                 "platform_str": self.platform,
-                "prefer_img_ver": self.preferred_img  # matching text displayed in GUI for avail builds doesnt work
+                "prefer_img_ver": self.preferred_img  # matching text displayed in GUI for avail builds doesn't work
             }
+            # 'device': {
+            #     "adm_pass": "fortinet",
+            #     "adm_usr": "admin",
+            #     #"branch_pt": 1253,
+            #     #"build": 1253,
+            #     #"faz.perm": 15,
+            #     #"faz.quota": 0,
+            #     #"dev_status": 1,
+            #     "device_action": "add_model",
+            #     "flags": 67371040,  # Without this auto-install stuff doesn't happen when match device registers
+            #     "mgmt_mode": 3,
+            #     #"model_device": 1,
+            #     "mr": 0,
+            #     "name": "site1_a",
+            #     "sn": "FG101FTK19003630",
+            #     "os_type": 0,
+            #     "os_ver": 7,
+            #     #"platform_id": 50,
+            #     "platform_str": "FortiGate-101F",
+            #     "prefer_img_ver": ''
+            #     #"version": 700
+            # }
         }
         response = self.api.execute(url, data)
         taskid = response[1]['taskid']
@@ -189,6 +215,20 @@ class ModelDevice():
             "vdom": self.vdom
         }
         response = self.api.add(url, data)
+        return self.__api_result(response)
+
+    # Function to add device to device group
+    def get_dev_group_info(self):
+        # Check for required parameters
+        if self.adom is None: raise MdDataError('adom', 'add_to_dev_group')
+        if self.vdom is None: raise MdDataError('vdom', 'add_to_dev_group')
+        if self.name is None: raise MdDataError('name', 'add_to_dev_group')
+        if self.group is None: raise MdDataError('group', 'add_to_dev_group')
+
+        url = f'/dvmdb/adom/{self.adom}/group/{self.group}/object member'
+        data = {
+        }
+        response = self.api.get(url, data)
         return self.__api_result(response)
 
 
@@ -341,6 +381,20 @@ class ModelDevice():
         }
         response = self.api.get(url,data)
         return True if response[1][0]['sn'] == self.serial_num else False
+
+    def get_device_info(self):
+        # Can't run without name and serial_number params, return None if one is missing
+        if self.name is None: return None
+        if self.serial_num is None: return None
+
+        url = "dvmdb/device/"
+        data = {
+            'filter': [
+                ['name', '==', self.name]
+            ],
+        }
+        response = self.api.get(url,data)
+        return response
 
 # Custom Exception Class for this ModelDevice Class errors related to data/parameters
 class MdDataError(Exception):
