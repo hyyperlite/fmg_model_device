@@ -39,7 +39,7 @@ import sys
 from pprint import pprint
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--fgt_yaml', default='devices2.yml')
+parser.add_argument('--fgt_yaml', default='google.yml')
 parser.add_argument('--fmg_ip', default='1.1.1.1')
 parser.add_argument('--fmg_login', default='admin')
 parser.add_argument('--fmg_pass', default='password')
@@ -54,7 +54,7 @@ parser.add_argument('--get_device_group_info', type=bool, default=False)
 
 # Enable/Disable specific components
 # parser.add_argument('--use_blueprint', type=bool, default=False)  # only fmg 7.2+, to do todo
-parser.add_argument('--add_model_device', type=bool, default=True)
+parser.add_argument('--add_model_device', type=bool, default=False)
 parser.add_argument('--add_to_pre_cli', type=bool, default=False)
 parser.add_argument('--install_device_db_pre', type=bool, default=False)
 parser.add_argument('--add_to_dev_group', type=bool, default=False)
@@ -64,6 +64,7 @@ parser.add_argument('--add_to_templ_group', type=bool, default=False)
 parser.add_argument('--install_device_db_post', type=bool, default=False)
 parser.add_argument('--add_to_pol_pkg', type=bool, default=False)
 parser.add_argument('--install_pol_pkg_to_db', type=bool, default=False)
+parser.add_argument('--add_meta_vars_map', type=bool, default=True)
 args = parser.parse_args()
 
 # Instantiate and Login to Fortimanager
@@ -176,6 +177,11 @@ with open(args.fgt_yaml) as file:
         if args.install_pol_pkg_to_db:
             print(f'  Install to DB Policy Package for device :', end=' ')
             result = md.install_pol_pkg_to_db()
+            print('Success') if result else print('Failed')
+
+        if args.add_meta_vars_map:
+            print(f' Add meta data variables for device: ', end=' ')
+            result = md.add_fmg_meta_vars_mapping()
             print('Success') if result else print('Failed')
 
 api.logout()

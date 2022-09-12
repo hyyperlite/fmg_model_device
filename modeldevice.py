@@ -93,7 +93,7 @@ class ModelDevice():
                 "desc": self.descr,
                 # "dev_status": 1,
                 "device_action": "add_model",
-                #"flags": 69468160,  # Without this auto-install stuff doesn't happen when match device registers  (7.0 vs 7.2?)
+                # "flags": 69468160,  # Without this auto-install stuff doesn't happen when match device registers  (7.0 vs 7.2?)
                 "flags": 67371040,  # Without this auto-install stuff doesn't happen when match device registers
                 "hostname": self.name,
                 "meta fields": self.meta_vars,
@@ -107,34 +107,12 @@ class ModelDevice():
                 "platform_str": self.platform,
                 "prefer_img_ver": self.preferred_img  # matching text displayed in GUI for avail builds doesn't work
             }
-            # 'device': {
-            #     "adm_pass": "fortinet",
-            #     "adm_usr": "admin",
-            #     #"branch_pt": 1253,
-            #     #"build": 1253,
-            #     #"faz.perm": 15,
-            #     #"faz.quota": 0,
-            #     #"dev_status": 1,
-            #     "device_action": "add_model",
-            #     "flags": 67371040,  # Without this auto-install stuff doesn't happen when match device registers
-            #     "mgmt_mode": 3,
-            #     #"model_device": 1,
-            #     "mr": 0,
-            #     "name": "site1_a",
-            #     "sn": "FG101FTK19003630",
-            #     "os_type": 0,
-            #     "os_ver": 7,
-            #     #"platform_id": 50,
-            #     "platform_str": "FortiGate-101F",
-            #     "prefer_img_ver": ''
-            #     #"version": 700
-            # }
         }
         response = self.api.execute(url, data)
         taskid = response[1]['taskid']
         return self.__api_task_result(taskid)
 
-    # Add the current model device object to FMG via passed in ftntlib 'api'
+    # Delete existing model device object from FMG via passed in ftntlib 'api'
     def delete(self):
 
         # Check parameters required for 'add'
@@ -231,7 +209,6 @@ class ModelDevice():
         response = self.api.get(url, data)
         return self.__api_result(response)
 
-
     # Function to add device to sdwan template
     def add_to_sdwan_templ(self):
         # Check for required parameters
@@ -281,6 +258,35 @@ class ModelDevice():
         response = self.api.add(url, data)
         return self.__api_result(response)
 
+    # FMG 7.2 new fmg meta vars, add var to ADOM
+    # def add_fmg_meta_vars(self):
+    #     url = f'/pm/config/adom/{self.adom}/obj/fmg/variable'
+    #
+    #     data = {
+    #         "name": "test1_name",
+    #         "value": "test1_val"
+    #     }
+
+    # FMG 7.2 new fmg meta vars, add mapping to existing meta var
+    def add_fmg_meta_vars_mapping(self):
+        for i in self.meta_vars:
+
+            url = f'/pm/config/adom/{self.adom}/obj/fmg/variable/{i}/dynamic_mapping'
+
+            data = {
+                "_scope": {
+                    "name": self.name,
+                    "vdom": self.vdom},
+                "value": self.meta_vars[i]
+            }
+
+            response = self.api.add(url, data)
+            if self.__api_result(response):
+                pass
+            else:
+                return False
+        return True
+
     def get_templ_group(self):
         # Check for required parameters
         if self.adom is None: raise MdDataError('adom', 'add_to_cli_templ_group')
@@ -289,7 +295,7 @@ class ModelDevice():
         if self.template_group is None: raise MdDataError('sdwan_template', 'add_to_cli_templ_group')
 
         # url = f'/pm/config/adom/{self.adom}/tmplgrp/{self.template_group}/scope member'
-        url = f'/pm/tmplgrp/adom/{self.adom}/{self.template_group}/'
+        url = f'/pm/tmplgrp/adom/{self.adom}/{self.template_group}'
         data = {
         }
         response = self.api.get(url, data)
