@@ -2,7 +2,7 @@ import ftntlib
 
 class ModelDevice():
     # Class initializer
-    def __init__(self, device: dict = None, fmg_api: ftntlib.fmg_jsonapi.FortiManagerJSON = None):
+    def __init__(self, device: dict = None, fmg_api: ftntlib.fmg_jsonapi.FortiManagerJSON = None, fmg_ver: int = 700):
 
         self.debug = False
         self.verbose = False
@@ -16,6 +16,7 @@ class ModelDevice():
         self.user = device['user'] if 'user' in device else 'admin'
         self.password = device['password'] if 'password' in device else ''
         self.descr = device['descr'] if 'descr' in device else ''
+        self.fmg_ver = fmg_ver
         self.name = device['name'] if 'name' in device else None
         self.serial_num = device['serial_num'] if 'serial_num' in device else None
         self.meta_vars = device['meta_vars'] if 'meta_vars' in device else ''
@@ -27,6 +28,12 @@ class ModelDevice():
         self.pre_cli_template = device['pre_cli_template'] if 'pre_cli_template' in device else None
         self.cli_template_group = device['cli_template_group'] if 'cli_template_group' in device else None
         self.template_group = device['template_group'] if 'template_group' in device else None
+
+        if 'vdomenabled' in device:
+            if device['vdomenabled'] == 'true' or device['vdomenabled'] == 'True':
+                self.vdomenabled = True
+        else:
+            self.vdomenabled = False
 
         # If fmg_api param was passed in, then try to set it (see also api property and setter)
         if fmg_api != None: self.api = fmg_api
@@ -44,26 +51,26 @@ class ModelDevice():
             raise TypeError("CLASS ModelDevice: fmg_api param must be an object type "
                             "fntlib.fmg.jsonapi.FortiManagerJSON")
 
-
     # Object stringification
     def __str__(self):
         # Return all instance variables as string
         return str(vars(self))
 
-
     def __api_result(self, a_response):
         if a_response[0]['message'] == 'OK':
-            return True
+            return 0, None
         else:
-            return False
+            return 1, a_response[0]
 
     # Function to analyze task based FMG API call results
     def __api_task_result(self, a_taskid):
         task = self.api.taskwait(a_taskid)  # ftntlib class function
         if task[1]['num_err'] > 0:
-            return task[1]['line']
+            return 1, task[1]['line']
+        elif task[1]['num_warn'] > 0:
+            return 1, task[1]['line']
         else:
-            return True
+            return 0, None
 
     # Add the current model device object to FMG via passed in ftntlib 'api'
     def add(self):
@@ -96,7 +103,7 @@ class ModelDevice():
                 # "flags": 69468160,  # Without this auto-install stuff doesn't happen when match device registers  (7.0 vs 7.2?)
                 "flags": 67371040,  # Without this auto-install stuff doesn't happen when match device registers
                 "hostname": self.name,
-                "meta fields": self.meta_vars,
+                # "meta fields": self.meta_vars,
                 "mgmt_mode": 3,
                 # "model_device": 1,
                 "mr": 0,
@@ -108,6 +115,9 @@ class ModelDevice():
                 "prefer_img_ver": self.preferred_img  # matching text displayed in GUI for avail builds doesn't work
             }
         }
+        if self.fmg_ver <= 720:
+            data['device']['meta_vars'] = self.meta_vars
+
         response = self.api.execute(url, data)
         taskid = response[1]['taskid']
         return self.__api_task_result(taskid)
@@ -175,6 +185,7 @@ class ModelDevice():
             }
         }
         response = self.api.execute(url, data)
+
         # This install requires to check task to verify completion
         taskid = response[1]['task']
         return self.__api_task_result(taskid)
@@ -234,9 +245,11 @@ class ModelDevice():
         if self.cli_template_group is None: raise MdDataError('sdwan_template', 'add_to_cli_templ_group')
 
         url = f'/pm/config/adom/{self.adom}/obj/cli/template-group/{self.cli_template_group}/scope member'
+
         data = {
             "name": self.name,
-            "vdom": self.vdom
+            # "vdom": self.vdom
+            "vdom": "global"
         }
         response = self.api.add(url, data)
         return self.__api_result(response)
@@ -275,17 +288,19 @@ class ModelDevice():
 
             data = {
                 "_scope": {
-                    "name": self.name,
-                    "vdom": self.vdom},
-                "value": self.meta_vars[i]
+                    "name": f"{self.name}",
+                    "vdom": f"{self.vdom}"
+                },
+                "value": f"{self.meta_vars[i]}"
             }
 
             response = self.api.add(url, data)
-            if self.__api_result(response):
+            result = self.__api_result(response)
+            if result[0] == 0:
                 pass
             else:
-                return False
-        return True
+                return 1, f'{i}: {response}'
+        return 0, ''
 
     def get_templ_group(self):
         # Check for required parameters
@@ -317,7 +332,6 @@ class ModelDevice():
         }
         response = self.api.add(url, data)
         return self.__api_result(response)
-
 
     # Function to install previously assigned policy package to policy DB
     def install_pol_pkg_to_db(self):
