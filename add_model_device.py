@@ -4,8 +4,8 @@
 Created by: Nick Petersen, Fortinet CSE - Americas
 
 Script to add Model Devices to FortiManager
-Optionally can do all of the following (and does by default)
-1. Add model device (ID by Serial Number) to DVM (including meta data variables)
+Optionally can do any of the following (and does by default)
+1. Add model device (ID by Serial Number) to DVM (including metadata variables)
 2. Add pre-run CLI template to device
 3. "Quick-install" to Device Database (to update DB from pre-run template)
 4.  Add model device to device group
@@ -31,64 +31,71 @@ Notes:
 """
 
 # Adding model device and configuring it for first time deployment
-from ftntlib import FortiManagerJSON
+from pyFMG.fortimgr import FortiManager
 from modeldevice import *
 import argparse
 import yaml
 import sys
+import urllib3
 from pprint import pprint
 
+urllib3.disable_warnings()
+
 parser = argparse.ArgumentParser()
-parser.add_argument('--fgt_yaml', default='devices.yml')
-parser.add_argument('--fmg_ip', default='1.1.1.1')
+parser.add_argument('--fgt_yaml', default='fgt.yml')
+parser.add_argument('--fmg_ip')
 parser.add_argument('--fmg_login', default='admin')
-parser.add_argument('--fmg_pass', default='password')
+parser.add_argument('--fmg_pass')
 parser.add_argument('--fmg_ver', type=int, default=720)
-parser.add_argument('--debug', type=bool,  default=False)
-parser.add_argument('--verbose', type=bool, default=True)
+parser.add_argument('--api_debug', type=bool,  default=False)
 parser.add_argument('--ignore_dev_exists', type=bool, default=False)
 
 # Some testing/checking options
-parser.add_argument('--get_device_info', type=bool, default=False)
+parser.add_argument('--get_device_info', type=bool, default=True)
 parser.add_argument('--get_device_group_info', type=bool, default=False)
+parser.add_argument('--delete_device', type=bool, default=False)
+parser.add_argument('--check_fmg_script', type=bool, default=False)
 
-# Enable/Disable specific components
-# parser.add_argument('--use_blueprint', type=bool, default=False)  # only fmg 7.2+, to do todo
-parser.add_argument('--add_model_device', type=bool, default=True)
-parser.add_argument('--add_meta_vars_map', type=bool, default=True)
-parser.add_argument('--add_to_pre_cli', type=bool, default=True)
-parser.add_argument('--install_device_db_pre', type=bool, default=True)
+# Enable/Disable components for use with fmg 7.2+ features (blueprint and/or new metavars)
+parser.add_argument('--add_model_device', type=bool, default=False)
+parser.add_argument('--add_meta_vars_map', type=bool, default=False)
+parser.add_argument('--use_device_blueprint', type=bool, default=False)
+
+# The following options may all be false if using device blueprint
+parser.add_argument('--add_to_pre_cli', type=bool, default=False)
+parser.add_argument('--install_device_db_pre', type=bool, default=False)
+parser.add_argument('--add_to_cli_templ_group', type=bool, default=False)
+parser.add_argument('--install_device_db_cli', type=bool, default=False)
 parser.add_argument('--add_to_dev_group', type=bool, default=False)
 parser.add_argument('--add_to_sdwan_templ', type=bool, default=False)
-parser.add_argument('--add_to_cli_templ_group', type=bool, default=True)
 parser.add_argument('--add_to_templ_group', type=bool, default=False)
-parser.add_argument('--install_device_db_post', type=bool, default=True)
+parser.add_argument('--install_device_db_post', type=bool, default=False)
 parser.add_argument('--add_to_pol_pkg', type=bool, default=False)
 parser.add_argument('--install_pol_pkg_to_db', type=bool, default=False)
 args = parser.parse_args()
 
 # Instantiate and Login to Fortimanager
-api = FortiManagerJSON()
-api.verbose('on') if args.verbose else api.verbose('off')
-api.debug('on') if args.debug else api.debug('off')
+# api = pyfgt.fortimgr instance
+api = FortiManager(args.fmg_ip, args.fmg_login, args.fmg_pass, debug=args.api_debug, timeout=30, verify_ssl=False)
 
-def check_result(result):
-    if result[0] == 0:
+
+def check_result(md_code, md_msg):
+    if md_msg == 'ABORT':
+        md_msg = '!!! Aborting configuration of this device.'
+
+    if md_code == 0:
         print('Success')
-        if result[1]:
-            print(result[1])
-        return 0
+        return True
     else:
-        print('Failed')
-        pprint(f'     {result[1]}')
-        return 1
-        # print('Success') if result[0] == 0 else pprint(f'Failed: {result[1]}')
+        print(f'Failed: {md_msg}')
+        return False
+
 
 # Try to open HTTP(s)/JSON API connection to FMG
 try:
-    api.login(args.fmg_ip, args.fmg_login, args.fmg_pass)
+    api.login()
 except:
-    print(f'Unable to either reach or login to FMG at {args.fmg_ip}, aborting.')
+    print(f'Unable to reach/login to FMG at {args.fmg_ip}, aborting.')
     exit()
 else:
     print(f'Successfully connected to FMG {args.fmg_ip} API\n')
@@ -116,84 +123,116 @@ with open(args.fgt_yaml) as file:
             pprint(md.get_dev_group_info())
             sys.exit()
 
+        if args.delete_device:
+            print(f' Delete device: ', end='')
+            code, msg = md.delete()
+            check_result(code, msg)
+
+        if args.check_fmg_script:
+            print(f' Checking if script: {devices[fg]["fmg_script"]} exists')
+            pprint(md.check_fmg_script())
+
         # Add model device to FMG
         if args.add_model_device:
             print(f'  Adding model device {fg}:', end=' ')
             try:
-                result = md.add()
+                code, msg = md.add()
             # Catch exception from ModelDevice for if the sn or name already exists in FMG DVM and then handle
             except MdFmgDvmError as e:
                 if args.ignore_dev_exists:
-                    print('\n   Device name or SN already Exists In DVM, continuing with subsequent  configurations')
+                    print(f'\n    {e}, Continuing with configurations due to "ignore_dev_exists" flag set')
                 else:
-                    print('\n   Device name or SN already Exists In DVM, abort further configuration of this device')
+                    print(f'\n    {e}, Abort further configuration of this device')
                     continue
             # Catch exception from ModelDevice for if not enough variables provided to add device
             except MdDataError as e:
-                print(f'\n    {e}, abort further configuration of this device')
+                print(f'\n    {e}, Aborting further configuration of this device')
                 continue
             # No exceptions, so continue as normal
             else:
-                check_result(result)
+                if not check_result(code, 'ABORT'):
+                    continue
 
         if args.add_meta_vars_map and args.fmg_ver >= 720:
             print(f'  Adding metadata variable mappings: ', end=' ')
-            result = md.add_fmg_meta_vars_mapping()
-            check_result(result)
+            code, msg = md.add_fmg_meta_vars_mapping()
+            if not check_result(code, 'ABORT'):
+                continue
 
         # Add model device (already in DVM) to pre-run cli template
         if args.add_to_pre_cli:
             print(f'  Adding {fg} to pre-run CLI template \"'
                   f'{devices[fg]["pre_cli_template"]}\" :', end=' ')
-            result = md.add_to_pre_cli_script()
-            check_result(result)
+            code, msg = md.add_to_pre_cli_script()
+            if not check_result(code, 'ABORT'):
+                continue
 
         # Install Device Settings (Quick DB Install)
         if args.install_device_db_pre:
             print(f'  Install (Quick Install) to Device DB for pre-run CLI template :', end=' ')
-            result = md.install_device_db()
-            check_result(result)
-        # Add device to DVM Group
-        if args.add_to_dev_group:
-            print(f'  Add {fg} to FMG Device Group \"{devices[fg]["group"]}\" :', end=' ')
-            result = md.add_to_dev_group()
-            check_result(result)
+            code, msg = md.install_device_db()
+            if not check_result(code, 'ABORT'):
+                continue
 
-        # Add device to SDWAN Template
-        if args.add_to_sdwan_templ:
-            print(f'  Add {fg} to SDWAN Template \"{devices[fg]["sdwan_template"]}\" :', end=' ')
-            result = md.add_to_sdwan_templ()
-            check_result(result)
 
         # Assign model device to post-run CLI template group
         if args.add_to_cli_templ_group:
             print(f'  Add {fg} to CLI Template Group \"{devices[fg]["cli_template_group"]}\" :', end=' ')
-            result = md.add_to_cli_templ_group()
-            check_result(result)
+            code, msg = md.add_to_cli_templ_group()
+            if not check_result(code, 'ABORT'):
+                continue
+
+        # Install Device Settings (Quick DB Install)
+        if args.install_device_db_cli:
+            print(f'  Install (Quick Install) to Device DB for post-run CLI templates :', end=' ')
+            code, msg = md.install_device_db()
+            if not check_result(code, 'ABORT'):
+                continue
+
+        # Add device to DVM Group
+        if args.add_to_dev_group:
+            print(f'  Add {fg} to FMG Device Group \"{devices[fg]["group"]}\" :', end=' ')
+            code, msg = md.add_to_dev_group()
+            if not check_result(code, 'ABORT'):
+                continue
+
+        # Add device to SDWAN Template
+        if args.add_to_sdwan_templ:
+            if "sdwan_template" in devices[fg]:
+                print(f'  Add {fg} to SDWAN Template \"{devices[fg]["sdwan_template"]}\" :', end=' ')
+                code, msg = md.add_to_sdwan_templ()
+                if not check_result(code, 'ABORT'):
+                    continue
+            else:
+                print(f'  sdwan_template parameter not provided, skipping add to sdwan-template')
 
         # Assign model device to general template groups (not cli)
         if args.add_to_templ_group:
             print(f'  Add {fg} to Template Group \"{devices[fg]["template_group"]}\" :', end=' ')
-            result = md.add_to_templ_group()
-            check_result(result)
+            code, msg = md.add_to_templ_group()
+            if not check_result(code, 'ABORT'):
+                continue
 
         # Install Device Settings again, this time to add post run templates to DB
         if args.install_device_db_post:
             print(f'  Install (Quick Install) to Device DB for post-run CLI template/group :', end=' ')
-            result = md.install_device_db()
-            check_result(result)
+            code, msg = md.install_device_db()
+            if not check_result(code, 'ABORT'):
+                continue
 
         # Assign model device to a policy package (not totally needed with being in group, but prefer indiv option)
         if args.add_to_pol_pkg:
             print(f'  Add {fg} to Policy Package \"{devices[fg]["policy_package"]}\" :', end=' ')
-            result = md.add_to_pol_pkg()
-            check_result(result)
+            code, msg = md.add_to_pol_pkg()
+            if not check_result(code, 'ABORT'):
+                continue
 
         # Install Device Settings (hopefully this is quick DB install?)
         if args.install_pol_pkg_to_db:
-            print(f'  Install to DB Policy Package for device :', end=' ')
-            result = md.install_pol_pkg_to_db()
-            check_result(result)
+            print(f'Install to DB Policy Package for device: ', end=' ')
+            code, msg = md.install_pol_pkg_to_db()
+            if not check_result(code, 'ABORT'):
+                continue
 
 
 api.logout()
