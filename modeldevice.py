@@ -29,8 +29,8 @@ class ModelDevice:
         self.template_group = device['template_group'] if 'template_group' in device else None
         self.fmg_script = device['fmg_script'] if 'fmg_script' in device else None
         self.os_major = device['major_version'] if 'major_version' in device else 7
-        self.os_minor = device['minor_version'] if 'minor_version' in device else 2
-        self.os_patch = device['patch_version'] if 'patch_version' in device else 3
+        self.os_minor = device['minor_version'] if 'minor_version' in device else 4
+        self.os_patch = device['patch_version'] if 'patch_version' in device else 4
 
         if 'vdomenabled' in device:
             if device['vdomenabled'] == 'true' or device['vdomenabled'] == 'True':
@@ -103,32 +103,30 @@ class ModelDevice:
         url = 'dvm/cmd/add/device'
         data = {
             'adom': self.adom,
-            'flags': ['create_task',
-                      'nonblocking'],
+            'flags': ['create_task'],
             'device': {
                 "adm_pass": self.password,
                 "adm_usr": self.user,
                 "desc": self.descr,
                 "dev_status": 1,
-                "device_action": "add_model",
-                # "flags": 69468160,  # Without this auto-install doesn't happen when match device registers
-                # "flags": 67371040,  # Without this auto-install stuff doesn't happen when match device registers
-                "flags": 67371008,  # flags copied from when device was added from csv for device blueprint
+                "device_action": "add_model",  #could instead use "model_device" with value of 1
+                #"flags": 67371008,  # flags copied from when device was added from csv for device blueprint
                 # "flags": 69468192,  # flags copied from when device was added from csv for device blueprint 7.2.4
+                "flags": 67371040,  # flags copied from when device was added from csv for device blueprint 7.4.4
                 "hostname": self.name,
-                "mgmt_mode": 3,
-                "model_device": 1,
+                "mgmt_mode": 'fmg',  # optional use "3" to represent fmg mgmt mode
                 "name": self.name,
                 "sn": self.serial_num,
-                "os_type": 0,
+                "os_type": 'fos',  # optional use "0" to represent fos
                 "os_ver": self.os_major,
+                "mr": self.os_minor,
                 "mr": self.os_minor,
                 "patch": self.os_patch,
                 "platform_str": self.platform,
                 "prefer_img_ver": self.preferred_img  # matching text displayed in GUI for avail builds doesn't work
             }
         }
-        if self.fmg_ver <= 720:
+        if self.fmg_ver < 720:
             data['device']['meta_vars'] = self.meta_vars
             if self.device_blueprint:
                 data['device']['device blueprint'] = self.device_blueprint
@@ -164,7 +162,7 @@ class ModelDevice:
                 else:
                     raise MdFmgDvmError('Supplied device name and sn are not associated in fmg dvmdb')
         else:
-            return 0, f'Device with device name {self.name} already does not exist in FMG'
+            return 0, f'Device with device name {self.name} does not exist'
 
     # Function to assign model device to pre-run CLI template
     def add_to_pre_cli_script(self):
@@ -179,7 +177,7 @@ class ModelDevice:
             "vdom": 'global'  # Must set this to global, not sure why...
         }
         response = self.api.add(url, data=data)
-        return self.__api_result(response)
+        return self.__api_result(response[1]['status']['code'],response[1]['status']['message'])
 
     # Function to quick install settings for device to device DB (for pre-run cli template assign)
     def install_device_db(self):
@@ -283,7 +281,12 @@ class ModelDevice:
 
     # FMG 7.2 new fmg meta vars, add mapping to existing meta var
     def add_fmg_meta_vars_mapping(self):
+        if self.meta_vars == None:
+            return 0, None
+
+        meta_failed_list = []
         for i in self.meta_vars:
+            print(f'  << Adding: {i} >>')
 
             url = f'/pm/config/adom/{self.adom}/obj/fmg/variable/{i}/dynamic_mapping'
             data = {
@@ -296,8 +299,24 @@ class ModelDevice:
             }
 
             rcode, rmsg = self.api.add(url, data=data)
-            return self.__api_result(rcode, rmsg)
-        return 0, None
+            if rcode == 0:
+                print(f'     Success adding {i}')
+            else:
+                print(f'    Failed to add {i}')
+                meta_failed_list.append(i)
+
+        
+        print('----------------------------------------------------------------------------------------------------')
+        print('<--Overall Result of Meta Var Adds-->')
+
+        if len(meta_failed_list) > 0:
+            print(f'List of meta vars that failed: {meta_failed_list}')
+            print('----------------------------------------------------------------------------------------------------')
+            return self.__api_result(1, 'failed')
+        else:
+            print('All Metvars added Successfully')
+            print('----------------------------------------------------------------------------------------------------')
+            return(0, 'Success')
 
     def get_templ_group(self):
         # Check for required parameters
@@ -310,7 +329,7 @@ class ModelDevice:
         url = f'/pm/tmplgrp/adom/{self.adom}/{self.template_group}'
         data = {
         }
-        rcode, rmsg = self.api.execute(url, data=data)
+        rcode, rmsg = self.api.execute(url, data)
         return self.__api_result(rcode, rmsg)
 
     # Function to add device to policy package
@@ -326,7 +345,7 @@ class ModelDevice:
             "name": self.name,
             "vdom": self.vdom
         }
-        rcode, rmsg = self.api.add(url, data=data)
+        rcode, rmsg = self.api.add(url, data)
         return self.__api_result(rcode, rmsg)
 
     # Function to install previously assigned policy package to policy DB
@@ -346,7 +365,7 @@ class ModelDevice:
                 "vdom": self.vdom
             }
         }
-        rcode, rmsg = self.api.execute(url, data=data)
+        rcode, rmsg = self.api.execute(url, data)
         return self.__api_result(rcode, rmsg)
 
     # Check if this object's name is already used as a device name in FMG DVM
@@ -406,7 +425,7 @@ class ModelDevice:
             ],
             'fields': ['sn']
         }
-        rcode, rmsg = self.api.get(url, data=data)
+        rcode, rmsg = self.api.get(url, data)
         # Return true if device name in FMG is associated to SN defined for this object
         return True if rmsg[0]['sn'] == self.serial_num else False
 
@@ -419,9 +438,9 @@ class ModelDevice:
         data = {
             'filter': [
                 ['name', '==', self.name]
-            ],
+            ]
         }
-        rcode, rmsg = self.api.get(url, data=data)
+        rcode, rmsg = self.api.get(url, data)
         return rmsg
 
     # function to check exists a pre-exiting script on fmg
@@ -436,7 +455,7 @@ class ModelDevice:
 
         data = {
         }
-        rcode, rmsg = self.api.get(url, data=data)
+        rcode, rmsg = self.api.get(url, data)
         return self.__api_result(rcode, rmsg)
 
     # function to execute a pre-exiting script on fmg against device
@@ -457,7 +476,7 @@ class ModelDevice:
             },
             "script": self.fmg_script
         }
-        rcode, rmsg = self.api.get(url, data=data)
+        rcode, rmsg = self.api.get(url, data)
         return self.__api_result(rcode, rmsg)
 
     # function to execute a pre-exiting script on fmg against device
@@ -474,7 +493,7 @@ class ModelDevice:
             "name": self.fmg_script,
             "vdom": self.vdom
         }
-        rcode, rmsg = self.api.execute(url, data=data)
+        rcode, rmsg = self.api.execute(url, data)
         return self.__api_result(rcode, rmsg)
 
 
