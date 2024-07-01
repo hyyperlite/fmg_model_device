@@ -170,11 +170,13 @@ for fg in devices:
 
     # Add model device (already in DVM) to pre-run cli template
     if args.add_to_pre_cli:
-        print(f'  Adding {fg} to pre-run CLI template \"'
-              f'{devices[fg]["pre_cli_template"]}\": ', end=' ')
-        code, msg = md.add_to_pre_cli_script()
-        if not check_result(code, 'ABORT'):
-            continue
+        if 'pre_cli_template' in devices[fg]:
+            if devices[fg]['pre_cli_template'].lower() != 'none':
+                print(f'  Adding {fg} to pre-run CLI template \"'
+                        f'{devices[fg]["pre_cli_template"]}\": ', end=' ')
+                code, msg = md.add_to_pre_cli_script()
+                if not check_result(code, 'ABORT'):
+                    continue
 
     # Install Device Settings (Quick DB Install)
     if args.install_device_db_pre:
@@ -206,13 +208,15 @@ for fg in devices:
 
     # Add device to SDWAN Template
     if args.add_to_sdwan_templ:
-        if "sdwan_template" in devices[fg]:
-            print(f'  Add {fg} to SDWAN Template \"{devices[fg]["sdwan_template"]}\": ', end=' ')
-            code, msg = md.add_to_sdwan_templ()
-            if not check_result(code, 'ABORT'):
-                continue
-        else:
-            print(f'  sdwan_template parameter not provided, skipping add to sdwan-template')
+        if 'sdwan_template' in devices[fg]:
+            if devices[fg]['sdwan_template'].lower() != 'none':
+                if "sdwan_template" in devices[fg]:
+                    print(f'  Add {fg} to SDWAN Template \"{devices[fg]["sdwan_template"]}\": ', end=' ')
+                    code, msg = md.add_to_sdwan_templ()
+                    if not check_result(code, 'ABORT'):
+                        continue
+                else:
+                    print(f'  sdwan_template parameter not provided, skipping add to sdwan-template')
 
     # Assign model device to general template groups (not cli)
     if args.add_to_templ_group:
