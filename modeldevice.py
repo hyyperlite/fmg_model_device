@@ -27,6 +27,7 @@ class ModelDevice:
         self.pre_cli_template = device['pre_cli_template'] if 'pre_cli_template' in device else None
         self.cli_template_group = device['cli_template_group'] if 'cli_template_group' in device else None
         self.template_group = device['template_group'] if 'template_group' in device else None
+        self.psk = device['psk'] if 'psk' in device else None
         self.fmg_script = device['fmg_script'] if 'fmg_script' in device else None
         self.os_major = device['major_version'] if 'major_version' in device else 7
         self.os_minor = device['minor_version'] if 'minor_version' in device else 4
@@ -116,6 +117,7 @@ class ModelDevice:
                 "hostname": self.name,
                 "mgmt_mode": 'fmg',  # optional use "3" to represent fmg mgmt mode
                 "name": self.name,
+                "psk": self.psk,
                 "sn": self.serial_num,
                 "os_type": 'fos',  # optional use "0" to represent fos
                 "os_ver": self.os_major,

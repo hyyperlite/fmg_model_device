@@ -24,10 +24,6 @@ Notes:
     -  Make sure you have your "fg_platform" setting right.  If its KVM you need "FortiGate-VM64-KVM" not
        just "FortiGate-VM64".  If you don't have this right, it will fail when upgrading to the
        "fg_preferred_img"
-
-    - If things aren't installing correctly once the real device is registered; ensure that your login
-      password is correct.   For brand new (Fortideploy, etc) devices the password should be "".  For
-      devices you are testing with but not completely factory resetting, this will be the current device password.
 """
 
 # Adding model device and configuring it for first time deployment
@@ -46,12 +42,12 @@ parser.add_argument('--fgt_yaml', default='fgt.yml')
 parser.add_argument('--fmg_ip')
 parser.add_argument('--fmg_login', default='admin')
 parser.add_argument('--fmg_pass')
-parser.add_argument('--fmg_ver', type=int, default=720)
+parser.add_argument('--fmg_ver', type=int, default=744)
 parser.add_argument('--api_debug', type=bool,  default=False)
 parser.add_argument('--ignore_dev_exists', type=bool, default=False)
 
 # Some testing/checking options
-parser.add_argument('--get_device_info', type=bool, default=False)
+parser.add_argument('--get_device_info', type=bool, default=True)
 parser.add_argument('--get_device_group_info', type=bool, default=False)
 parser.add_argument('--delete_device', type=bool, default=False)
 parser.add_argument('--check_fmg_script', type=bool, default=False)
@@ -124,7 +120,7 @@ for fg in devices:
     if args.get_device_info:
         print(f'  Get/print info for device {fg} if exists')
         md.get_device_info()
-        #pprint(md.get_device_info())
+        pprint(md.get_device_info())
         sys.exit()
 
     if args.get_device_group_info:
