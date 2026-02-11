@@ -42,31 +42,31 @@ parser.add_argument('--fgt_yaml', default='fgt.yml')
 parser.add_argument('--fmg_ip')
 parser.add_argument('--fmg_login', default='admin')
 parser.add_argument('--fmg_pass')
-parser.add_argument('--fmg_ver', type=int, default=744)
-parser.add_argument('--api_debug', type=bool,  default=True)
+parser.add_argument('--fmg_ver', type=int, default=766)
+parser.add_argument('--api_debug', type=bool, default=True)
 parser.add_argument('--ignore_dev_exists', type=bool, default=False)
 
 # Some testing/checking options
-parser.add_argument('--get_device_info', type=bool, default=False)
+parser.add_argument('--get_device_info', type=bool, default=True)
 parser.add_argument('--get_device_group_info', type=bool, default=False)
-parser.add_argument('--delete_device', type=bool, default=False)
+parser.add_argument('--delete_device', type=bool, default=True)
 parser.add_argument('--check_fmg_script', type=bool, default=False)
 
 # Enable/Disable components for use with fmg 7.2+ features (blueprint and/or new metavars)
-parser.add_argument('--add_model_device', type=bool, default=False)
-parser.add_argument('--add_meta_vars_map', type=bool, default=False)
+parser.add_argument('--add_model_device', type=bool, default=True)
+parser.add_argument('--add_meta_vars_map', type=bool, default=True)
 #parser.add_argument('--use_device_blueprint', type=bool, default=False) #no longer working
 
 # Additional processing
-parser.add_argument('--add_to_pre_cli', type=bool, default=False)
+parser.add_argument('--add_to_pre_cli', type=bool, default=True)
 parser.add_argument('--install_device_db_pre', type=bool, default=False)
-parser.add_argument('--add_to_cli_templ_group', type=bool, default=False)
+parser.add_argument('--add_to_cli_templ_group', type=bool, default=True)
 parser.add_argument('--install_device_db_cli', type=bool, default=False)
 parser.add_argument('--add_to_dev_group', type=bool, default=True)
 parser.add_argument('--add_to_sdwan_templ', type=bool, default=False)
 parser.add_argument('--add_to_templ_group', type=bool, default=False)
 parser.add_argument('--install_device_db_post', type=bool, default=False)
-parser.add_argument('--add_to_pol_pkg', type=bool, default=False)
+parser.add_argument('--add_to_pol_pkg', type=bool, default=True)
 parser.add_argument('--install_pol_pkg_to_db', type=bool, default=False)
 args = parser.parse_args()
 
@@ -121,12 +121,10 @@ for fg in devices:
         print(f'  Get/print info for device {fg} if exists')
         md.get_device_info()
         pprint(md.get_device_info())
-        sys.exit()
 
     if args.get_device_group_info:
         print(f'   Get/print group info')
         pprint(md.get_dev_group_info())
-        sys.exit()
 
     if args.delete_device:
         print(f' Delete device: ', end='')

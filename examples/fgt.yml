@@ -1,0 +1,25 @@
+fgt-test1:
+  name: fgt-test1
+  descr: "Model Device Test 1"
+  serial_num: FGVMSLTMXXXXXXXX
+  platform: FortiGate-VM64-KVM
+  preferred_img: 7.6.6-b3652
+  group: group1
+  adom: root
+  vdom: root
+  user: admin
+  password: XXXXXXXXX
+  policy_package: pol1
+  sdwan_template: sdwan1
+  pre_cli_template: pre_vm_intfs
+  cli_template_group: cli_grp-FGs
+  template_group: FGs
+  meta_vars:
+    vm_interface_number: 6
+    hostname: fgt-test1
+    timezone: US/Eastern
+    latitude: 35.2258288
+    longitude: -80.857707
+    ...
+    ...
+    ...

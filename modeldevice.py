@@ -114,6 +114,7 @@ class ModelDevice:
                 #"flags": 67371008,  # flags copied from when device was added from csv for device blueprint
                 # "flags": 69468192,  # flags copied from when device was added from csv for device blueprint 7.2.4
                 "flags": 67371040,  # flags copied from when device was added from csv for device blueprint 7.4.4
+                #"flags": 69468192, # flags copied from when device was added via gui in fmg 7.6.6
                 "hostname": self.name,
                 "mgmt_mode": 'fmg',  # optional use "3" to represent fmg mgmt mode
                 "name": self.name,
@@ -122,8 +123,7 @@ class ModelDevice:
                 "os_type": 'fos',  # optional use "0" to represent fos
                 "os_ver": self.os_major,
                 "mr": self.os_minor,
-                "mr": self.os_minor,
-                "patch": self.os_patch,
+                #"patch": self.os_patch,
                 "platform_str": self.platform,
                 "prefer_img_ver": self.preferred_img  # matching text displayed in GUI for avail builds doesn't work
             }
@@ -163,6 +163,17 @@ class ModelDevice:
 
                 else:
                     raise MdFmgDvmError('Supplied device name and sn are not associated in fmg dvmdb')
+            else:
+                url = 'dvm/cmd/del/device/'
+                data = {
+                    'adom': self.adom,
+                    'flags': ['create_task',
+                              'nonblocking'],
+                    'device': self.name
+                }
+
+                rcode, rmsg = self.api.execute(url, data=data)
+                return self.__api_result(rcode, rmsg)
         else:
             return 0, f'Device with device name {self.name} does not exist'
 
@@ -344,8 +355,12 @@ class ModelDevice:
 
         url = f'/pm/pkg/adom/root/{self.policy_package}/scope member'
         data = {
-            "name": self.name,
-            "vdom": self.vdom
+            "data": [
+                {
+                  "name": self.name,
+                  "vdom": self.vdom
+                }
+            ]
         }
         rcode, rmsg = self.api.add(url, data)
         return self.__api_result(rcode, rmsg)
